@@ -25,15 +25,15 @@ commands:
       - checkout
       - run:
           name: Make build directory
-          command: mkdir build_<< parameters.id >>
+          command: mkdir build_server_linux_<< parameters.id >>
       - run:
           name: Create build files
-          working_directory: build_<< parameters.id >>
+          working_directory: build_server_linux_<< parameters.id >>
           command: cmake .. -DCMAKE_CXX_COMPILER=<< parameters.compiler >>
       - run:
           name: Build binaries
           working_directory: build_server_linux_<< parameters.id >>
-          command: make
+          command: "make -j$(grep cpu.cores /proc/cpuinfo | sort -u | sed 's/[^0-9]//g')"
       - persist_to_workspace:
           root: "."
           paths:  
@@ -73,7 +73,7 @@ commands:
       - persist_to_workspace:
           root: "."
           paths:
-            - "build_<< parameters.id >>"
+            - "build_client_linux_<< parameters.id >>"
 
   test_client_linux:
     parameters:
@@ -83,12 +83,12 @@ commands:
       - checkout
       - run:
           name: Build and run unit tests
-          command: dotnet test PlanetaMatchMakerClientTest -c Release
+          command: dotnet test PlanetaMatchMakerClientTest -c Release -l junit
       - run:
           name: Copy test log
           command: |
             mkdir -p ~/test-results/junit/
-            cp PlanetaMatchMakerClient/TestResults/TestResults.xml ~/test-results/junit/planeta_match_maker_client_linux_test_<< parameters.id >>.xml
+            cp PlanetaMatchMakerClientTest/TestResults/TestResults.xml ~/test-results/junit/planeta_match_maker_client_linux_test_<< parameters.id >>.xml
           when: always
       - store_test_results:
           path: ~/test-results
@@ -110,6 +110,9 @@ commands:
             - "build_test_client_linux_<< parameters.id >>"
 
   # build_unity_client:
+  #   parameters:
+  #     id:
+  #       type: string
   #   steps:
   #     - checkout
   #     - run:
@@ -117,16 +120,16 @@ commands:
   #         command: cd PlanetaMatchMakerTest
   #     - run:
   #         name: Create build files
-  #         working_directory: build_<< parameters.id >>
+  #         working_directory: build_unity_client_<< parameters.id >>
   #         command: cmake .. -DCMAKE_CXX_COMPILER=<< parameters.compiler >>
   #     - run:
   #         name: Build binaries
-  #         working_directory: build_<< parameters.id >>
+  #         working_directory: build_unity_client_<< parameters.id >>
   #         command: make
   #     - persist_to_workspace:
   #         root: "."
   #         paths:
-  #           - "build_<< parameters.id >>"
+  #           - "build_unity_client_<< parameters.id >>"
 
 jobs:
   build_server_alpine_clang:
@@ -142,23 +145,23 @@ jobs:
       - test_server_linux:
           id: alpine_clang
 
-  # build_client_linux:
-  #   executor: linux_csharp
-  #   steps:
-  #     - build_client_linux:
-  #         id: general
+  build_client_linux:
+    executor: linux_csharp
+    steps:
+      - build_client_linux:
+          id: general
 
-  # test_client_linux:
-  #   executor: linux_csharp
-  #   steps:
-  #     - test_client_linux:
-  #         id: general
+  test_client_linux:
+    executor: linux_csharp
+    steps:
+      - test_client_linux:
+          id: general
 
-  # build_test_client:
-  #   executor: linux_csharp
-  #   steps:
-  #     - build_test_client_linux:
-  #         id: general
+  build_test_client_linux:
+    executor: linux_csharp
+    steps:
+      - build_test_client_linux:
+          id: general
 
   # build_unity_client:
   #   executor: unity
@@ -167,7 +170,7 @@ jobs:
   #         id: general
 
 workflows:
-  build_and_test:
+  build_and_test_server:
     jobs:
       - build_server_alpine_clang:
           filters:
@@ -181,24 +184,30 @@ workflows:
             branches:
               only: master
 
-      # - build_client_linux:
-      #     filters:
-      #       branches:
-      #         only: master
+  build_and_test_client:
+    jobs:
+      - build_client_linux:
+          filters:
+            branches:
+              only: master
 
-      # - test_client_linux:
-      #     requires:
-      #       - build_client_linux
-      #     filters:
-      #       branches:
-      #         only: master
+      - test_client_linux:
+          requires:
+            - build_client_linux
+          filters:
+            branches:
+              only: master
 
-      # - build_test_client:
-      #     filters:
-      #       branches:
-      #         only: master
+  build_and_test_test_client:
+    jobs:
+      - build_test_client_linux:
+          filters:
+            branches:
+              only: master
 
-      # - build_unity_client:
-      #     filters:
-      #       branches:
-      #         only: master
+  # build_and_test_unity_client:
+  #   jobs:
+  #     - build_unity_client:
+  #         filters:
+  #           branches:
+  #             only: master
