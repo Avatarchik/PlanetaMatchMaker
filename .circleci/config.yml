@@ -175,35 +175,35 @@ workflows:
       - build_server_alpine_clang:
           filters:
             branches:
-              only: master
+              only: f_6
 
       - test_server_alpine_clang:
           requires:
             - build_server_alpine_clang
           filters:
             branches:
-              only: master
+              only: f_6
 
   build_and_test_client:
     jobs:
       - build_client_linux:
           filters:
             branches:
-              only: master
+              only: f_6
 
       - test_client_linux:
           requires:
             - build_client_linux
           filters:
             branches:
-              only: master
+              only: f_6
 
   build_and_test_test_client:
     jobs:
       - build_test_client_linux:
           filters:
             branches:
-              only: master
+              only: f_6
 
   # build_and_test_unity_client:
   #   jobs:
